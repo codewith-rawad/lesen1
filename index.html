@@ -5,7 +5,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Lesen Teil 1 · Deutsch mit Rawad</title>
-  <link rel="preconnect" href="https://qrznwrvfjacoepegjpov.supabase.co" crossorigin>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
@@ -13,25 +12,11 @@
     rel="stylesheet">
   <link rel="stylesheet" href="style.css">
   <style>
-    .noar .ar {
-      display: none !important
-    }
-
-    .tapar .qcard:not(.showar) .ar {
-      display: none !important
-    }
-
-    .trbtn {
-      display: none
-    }
-
-    .tapar .trbtn {
-      display: inline-block
-    }
-
-    .sectitle {
-      margin: 6px 0 16px
-    }
+    .noar .ar { display: none !important }
+    .tapar .qcard:not(.showar) .ar { display: none !important }
+    .trbtn { display: none }
+    .tapar .trbtn { display: inline-block }
+    .sectitle { margin: 6px 0 16px }
   </style>
 </head>
 
@@ -51,6 +36,7 @@
     </div>
   </main>
   <footer>© 2026 Deutsch mit Rawad · <a href="https://t.me/mez123794" target="_blank" rel="noopener">@mez123794</a></footer>
+  <script src="lesen1.js"></script>
   <script src="app.js"></script>
   <script>
     (function () {
@@ -67,8 +53,6 @@
       const letters = 'ABCDEFGH';
       function fail(m) { app.innerHTML = `<div class="err">${esc(m)}</div><p style="text-align:center;margin-top:16px"><a class="btn ghost" href="index.html">الرئيسية</a></p>` }
 
-      /* ---------- Decks ---------- */
-      const RF = [{ k: 'richtig', de: 'Richtig', ar: 'صح', fx: 1 }, { k: 'falsch', de: 'Falsch', ar: 'خطأ', fx: 1 }];
       function storyDeck(st) {
         const cards = [];
         (st.questions || []).forEach((q, i) => {
@@ -84,15 +68,14 @@
         });
         return { title: st.title || 'Übung', sum: { ar: st.summary_ar, de: st.summary_de }, cards };
       }
-      /* ---------- Listen ---------- */
+
       function list(title, sub, items, href) {
         app.style.maxWidth = '1100px';
         app.innerHTML = `<h1 class="disp de sectitle" style="font-size:clamp(2rem,6vw,3.4rem)">${esc(title)}</h1><p style="color:var(--mute)">${sub}</p><div class="grid">${items.map((it, i) => `<a class="stamp" href="${href(i)}"><div class="in">${sceneFor(it.t + ' ' + (it.s || ''), i)}<div class="card-body"><h3 class="de">${esc(it.t)}</h3><div class="meta"><span>${it.n} سؤال</span><span class="tag">${it.d ? '✓ تم' : 'ابدأ'}</span></div></div></div></a>`).join('')}</div>`;
       }
 
-      /* ---------- Spielen ---------- */
       function play(build, doneId, backUrl, nextUrl) {
-        const KEY = 'state_' + fileKey + '_' + doneId;
+        const KEY = 'state2_' + fileKey + '_' + doneId;
         let S = null; try { S = JSON.parse(localStorage.getItem(KEY) || 'null') } catch (e) { }
         const resumed = !!(S && S.deck && S.deck.cards && S.deck.cards.length);
         if (!resumed) S = { deck: build(), ans: {}, cur: 0, sy: 0, done: false };
@@ -100,7 +83,6 @@
         S.exam = localStorage.getItem('qexam') === '1';
         const deck = S.deck, N = deck.cards.length;
         if (!N) { fail('ما في أسئلة بهذا القسم.'); return }
-        /* هل في ترجمة حقيقية بهذا القسم؟ (تسميات صح/خطأ الثابتة ما بتنحسب) */
         const hasAr = deck.cards.some(c => (c.ar && String(c.ar).trim()) || c.opts.some(o => !o.fx && o.ar && String(o.ar).trim())) || !!(deck.sum.ar && String(deck.sum.ar).trim());
         const arBtn = document.getElementById('arBtn'); if (arBtn) arBtn.style.display = hasAr ? '' : 'none';
         document.body.classList.toggle('noar', !hasAr || trMode === 'off');
@@ -123,7 +105,6 @@
         const pb = document.getElementById('pb'), pt = document.getElementById('pt'), stage = document.getElementById('stage'), end = document.getElementById('end');
         const cardHtml = i => {
           const c = deck.cards[i], cAr = hasAr && c.ar && String(c.ar).trim();
-          /* Foto nach Inhalt der Frage; sonst nach Thema der Geschichte; sonst keins */
           const pu = photoFor(c.de + ' ' + (c.ar || ''), i) || photoFor(deck.title + ' ' + (deck.sum.de || '') + ' ' + (deck.sum.ar || ''), i);
           const qph = pu ? `<div class="qph"><img loading="lazy" alt="" src="${pu}" onerror="this.parentNode.remove()"></div>` : '';
           return `<div class="stamp qcard" data-i="${i}"><div class="in"><div class="qbody">${qph}<div class="qnum"><span>${i + 1}/${N}</span>${(hasAr && (cAr || c.opts.some(o => o.ar))) ? '<button type="button" class="trbtn" aria-label="ترجمة">🌐</button>' : ''}</div><div class="qtext de">${esc(c.de)}${cAr ? `<span class="ar">${esc(c.ar)}</span>` : ''}</div>
@@ -165,9 +146,8 @@
           finish();
           if (full && !S.exam) end.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
-        /* الأسئلة تُبنى مرة وحدة؛ تغيير العرض بس يبدّل الشكل بدون إعادة بناء أو تحميل صور */
         let ql, chipsEl, navEl, pvB, nvB, cardEls = [];
-        function build() {
+        function buildUI() {
           stage.innerHTML = `<div class="chips" id="chips">${deck.cards.map((_, i) => `<button type="button" class="chip" data-i="${i}">${i + 1}</button>`).join('')}</div><div class="qlist" id="ql">${deck.cards.map((_, i) => cardHtml(i)).join('')}</div><div class="stepnav" id="sn"><button type="button" class="btn ghost" id="pv">→ السابق</button><button type="button" class="btn ghost" id="nv">التالي ←</button></div>`;
           ql = document.getElementById('ql'); chipsEl = document.getElementById('chips'); navEl = document.getElementById('sn'); pvB = document.getElementById('pv'); nvB = document.getElementById('nv');
           cardEls = [...ql.querySelectorAll('.qcard')];
@@ -210,13 +190,12 @@
         }
         window._cycleTr = () => setTr({ show: 'tap', tap: 'off', off: 'show' }[trMode] || 'show');
         document.getElementById('rst').onclick = () => { if (!answeredN() || confirm('تبدأ هالقصة من الأول؟')) restart() };
-        build(); render();
+        buildUI(); render();
         if (resumed && S.mode !== 'step' && S.sy > 0) setTimeout(() => window.scrollTo(0, S.sy), 60);
         let tk = 0; window.addEventListener('scroll', () => { if (tk) return; tk = setTimeout(() => { tk = 0; S.sy = window.scrollY; save() }, 250) }, { passive: true });
         if (resumed && answeredN() > 0 && !S.done && answeredN() < N) toast('كمّلنا من وين وقفت ✓');
       }
 
-      /* ---------- Router ---------- */
       loadQuestionsFile().then(data => {
         if (!Array.isArray(data) || !data.length) { fail('تعذّر تحميل الأسئلة. تأكد من الاتصال بالإنترنت وحاول مرة ثانية.'); return }
         const back = 'index.html', k = parseInt(sIdx, 10);

@@ -1,30 +1,8 @@
 /* Deutsch mit Rawad · Gratis-Version: nur Lesen Teil 1, ohne Login */
 window.FILE_KEY = 'lesen1'
-window.PUBLIC_STORAGE_BASE = 'https://qrznwrvfjacoepegjpov.supabase.co/storage/v1/object/public/teil1lesen/'
-window.CACHE_KEY = 'questions_cache_lesen1'
 
-window.fetchStories = function () {
-    const base = window.PUBLIC_STORAGE_BASE
-    /* beide Dateinamen parallel anfragen, der erste gültige gewinnt */
-    const get = u => fetch(u).then(r => r.ok ? r.json() : Promise.reject()).then(d => Array.isArray(d) && d.length ? d : Promise.reject())
-    return Promise.any([get(base + 'Lesen1.json'), get(base + 'lesen1.json')]).catch(() => null)
-}
-
-/* sofort aus dem Cache, danach im Hintergrund aktualisieren; ohne Cache: Download */
-window.loadQuestionsFile = function () {
-    if (window._qp) return window._qp
-    const refresh = () => window.fetchStories().then(d => {
-        if (d) { try { localStorage.setItem(window.CACHE_KEY, JSON.stringify({ ts: Date.now(), data: d })) } catch (e) { } }
-        return d
-    })
-    try {
-        const c = JSON.parse(localStorage.getItem(window.CACHE_KEY) || 'null')
-        if (c && Array.isArray(c.data) && c.data.length) { refresh().catch(() => { }); return (window._qp = Promise.resolve(c.data)) }
-    } catch (e) { }
-    return (window._qp = refresh())
-}
-/* Download startet sofort beim Laden der Seite */
-window.loadQuestionsFile()
+/* Daten kommen direkt aus lesen1.js – kein Netzwerk nötig */
+window.loadQuestionsFile = function () { return Promise.resolve(window.LESEN1_DATA || null) }
 
 /* ================= UI helpers (Themes · Szenen · Prefetch) ================= */
 window.THEMES = [['nacht', '#17141f', '#ffcc00'], ['tag', '#f4f6fb', '#e63946'], ['meer', '#08323d', '#ff7a59'], ['wald', '#10291c', '#f2b84b']]
@@ -71,9 +49,7 @@ window.sceneFor = function (text, seed) {
     return `<div class="scene" style="--h:${hit[4]}"><i class="sun"></i><b class="e1">${hit[1]}</b><b class="e2">${hit[2]}</b><b class="e3">${hit[3]}</b><u></u>${img}</div>`
 }
 
-/* ===== Echte Fotos passend zum Inhalt (Flickr-Fotos nach Stichwort) =====
-   Der Text (deutsch/arabisch) wird nach Schlüsselwörtern durchsucht; das erste Treffer-Wort
-   bestimmt das Foto. Kein Treffer -> kein Foto (die Illustration bleibt als Fallback). */
+/* ===== Echte Fotos passend zum Inhalt ===== */
 window.PHOTO_WORDS = [
     [/fahrrad|radfahr|\brad\b|دراجة/i, 'bicycle'],
     [/umzug|umziehen|karton|انتقال|نقل/i, 'moving,boxes'],
