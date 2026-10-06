@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Lesen Teil 1 · Deutsch mit Rawad</title>
+  <link rel="preconnect" href="https://qrznwrvfjacoepegjpov.supabase.co" crossorigin>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;800&family=Cairo:wght@500;700;800&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .noar .ar {
+      display: none !important
+    }
+
+    .tapar .qcard:not(.showar) .ar {
+      display: none !important
+    }
+
+    .trbtn {
+      display: none
+    }
+
+    .tapar .trbtn {
+      display: inline-block
+    }
+
+    .sectitle {
+      margin: 6px 0 16px
+    }
+  </style>
+</head>
+
+<body>
+  <div class="flagbar"></div>
+  <header class="top">
+    <div class="wrap">
+      <a class="brand" href="index.html">Deutsch <i>Rawad</i></a>
+      <div class="sp"></div>
+      <button class="pill" id="arBtn" type="button" title="الترجمة">🌐 <span>الترجمة</span></button>
+      <div class="themes" id="themes"></div>
+    </div>
+  </header>
+  <main class="qwrap" id="app">
+    <div class="stamp">
+      <div class="in sk"></div>
+    </div>
+  </main>
+  <footer>© 2026 Deutsch mit Rawad · <a href="https://t.me/mez123794" target="_blank" rel="noopener">@mez123794</a></footer>
+  <script src="app.js"></script>
+  <script>
+    (function () {
+      mountThemes(document.getElementById('themes'));
+      const app = document.getElementById('app'), P = new URLSearchParams(location.search);
+      const fileKey = 'lesen1', sIdx = P.get('index');
+      const PTS = 10;
+      let trMode = localStorage.getItem('trMode') || 'show';
+      document.getElementById('arBtn').onclick = () => { if (window._cycleTr) { window._cycleTr(); toast({ show: 'الترجمة: ظاهرة', tap: 'الترجمة: عند الضغط 🌐', off: 'الترجمة: مخفية' }[trMode]) } };
+      const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const pick = a => a[Math.floor(Math.random() * a.length)];
+      const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1));[a[i], a[j]] = [a[j], a[i]] } return a };
+      const tx = v => v && typeof v === 'object' ? { de: v.de || v.ar || v.text || '', ar: v.ar || v.text_ar || '' } : { de: String(v == null ? '' : v), ar: '' };
+      const letters = 'ABCDEFGH';
+      function fail(m) { app.innerHTML = `<div class="err">${esc(m)}</div><p style="text-align:center;margin-top:16px"><a class="btn ghost" href="index.html">الرئيسية</a></p>` }
+
+      /* ---------- Decks ---------- */
+      const RF = [{ k: 'richtig', de: 'Richtig', ar: 'صح', fx: 1 }, { k: 'falsch', de: 'Falsch', ar: 'خطأ', fx: 1 }];
+      function storyDeck(st) {
+        const cards = [];
+        (st.questions || []).forEach((q, i) => {
+          if (q.texts) {
+            const t = tx(pick(q.texts));
+            cards.push({ de: t.de, ar: t.ar, opts: shuffle([{ k: 'R', de: 'Richtig', ar: 'صح', fx: 1 }, { k: 'F', de: 'Falsch', ar: 'خطأ', fx: 1 }]), c: String(q.answer) });
+          } else {
+            const cd = q.correct_answers_de || q.correct_answers || [], wd = q.wrong_answers_de || q.wrong_answers || [], ca = q.correct_answers_ar || [], wa = q.wrong_answers_ar || [];
+            const ci = cd.length ? Math.floor(Math.random() * cd.length) : 0;
+            const o = [{ k: 'c', de: cd[ci] || '', ar: ca[ci] || '' }].concat(wd.map((w, j) => ({ k: 'w' + j, de: w, ar: wa[j] || '' }))).filter(x => x.de);
+            cards.push({ de: q.question_de || q.question || '', ar: q.question_ar || '', opts: shuffle(o), c: 'c' });
+          }
+        });
+        return { title: st.title || 'Übung', sum: { ar: st.summary_ar, de: st.summary_de }, cards };
+      }
+      /* ---------- Listen ---------- */
+      function list(title, sub, items, href) {
+        app.style.maxWidth = '1100px';
+        app.innerHTML = `<h1 class="disp de sectitle" style="font-size:clamp(2rem,6vw,3.4rem)">${esc(title)}</h1><p style="color:var(--mute)">${sub}</p><div class="grid">${items.map((it, i) => `<a class="stamp" href="${href(i)}"><div class="in">${sceneFor(it.t + ' ' + (it.s || ''), i)}<div class="card-body"><h3 class="de">${esc(it.t)}</h3><div class="meta"><span>${it.n} سؤال</span><span class="tag">${it.d ? '✓ تم' : 'ابدأ'}</span></div></div></div></a>`).join('')}</div>`;
+      }
+
+      /* ---------- Spielen ---------- */
+      function play(build, doneId, backUrl, nextUrl) {
+        const KEY = 'state_' + fileKey + '_' + doneId;
+        let S = null; try { S = JSON.parse(localStorage.getItem(KEY) || 'null') } catch (e) { }
+        const resumed = !!(S && S.deck && S.deck.cards && S.deck.cards.length);
+        if (!resumed) S = { deck: build(), ans: {}, cur: 0, sy: 0, done: false };
+        S.mode = localStorage.getItem('qmode') || 'list';
+        S.exam = localStorage.getItem('qexam') === '1';
+        const deck = S.deck, N = deck.cards.length;
+        if (!N) { fail('ما في أسئلة بهذا القسم.'); return }
+        /* هل في ترجمة حقيقية بهذا القسم؟ (تسميات صح/خطأ الثابتة ما بتنحسب) */
+        const hasAr = deck.cards.some(c => (c.ar && String(c.ar).trim()) || c.opts.some(o => !o.fx && o.ar && String(o.ar).trim())) || !!(deck.sum.ar && String(deck.sum.ar).trim());
+        const arBtn = document.getElementById('arBtn'); if (arBtn) arBtn.style.display = hasAr ? '' : 'none';
+        document.body.classList.toggle('noar', !hasAr || trMode === 'off');
+        document.body.classList.toggle('tapar', hasAr && trMode === 'tap');
+        let dead = false;
+        const save = () => { if (dead) return; try { localStorage.setItem(KEY, JSON.stringify(S)) } catch (e) { } };
+        const answeredN = () => Object.keys(S.ans).length;
+        const revealed = () => !S.exam || S.done;
+        const stats = () => { let ok = 0, bad = 0; for (const i in S.ans) { S.ans[i] === deck.cards[i].c ? ok++ : bad++ } return { ok, bad, pts: ok * PTS } };
+        const sceneText = deck.title + ' ' + (deck.sum.de || '') + ' ' + (deck.sum.ar || '') + ' ' + deck.cards.slice(0, 3).map(c => c.de + ' ' + c.ar).join(' ');
+        const MODES = [['list', '☰ قائمة'], ['grid', '▦ شبكة'], ['step', '▢ بطاقة بطاقة']];
+        const sumHtml = (deck.sum.ar || deck.sum.de) ? `<details class="summary" ${resumed ? '' : 'open'}><summary>ملخص النص / Zusammenfassung</summary>${deck.sum.ar ? `<p class="ar" style="direction:rtl">${esc(deck.sum.ar)}</p>` : ''}${deck.sum.de ? `<p class="de">${esc(deck.sum.de)}</p>` : ''}</details>` : '';
+        app.innerHTML = `<a class="back" href="${backUrl}">→ رجوع</a><div class="stamp" style="margin-bottom:18px"><div class="in"><div style="position:relative">${sceneFor(sceneText, doneId)}<div class="ttl" style="font-size:1.5rem">${esc(deck.title)}</div></div></div></div>` + sumHtml +
+          (deck.hint ? `<p style="color:var(--mute);margin-bottom:12px" class="de">${esc(deck.hint)}</p>` : '') +
+          `<div class="tools"><div class="modes" id="modes"><span class="lbl">العرض</span>${MODES.map(m => `<button type="button" data-m="${m[0]}">${m[1]}</button>`).join('')}</div>
+  <div class="modes" id="styles"><span class="lbl">الأسلوب</span><button type="button" data-x="0">✎ تدريب · نتيجة فورية</button><button type="button" data-x="1">⏱ امتحان · النتيجة بالآخر</button></div>
+  <div class="modes" id="trm" ${hasAr ? '' : 'hidden'}><span class="lbl">الترجمة</span><button type="button" data-t="show">ظاهرة</button><button type="button" data-t="tap">عند الضغط</button><button type="button" data-t="off">مخفية</button><button type="button" class="rst" id="rst">↺ من جديد</button></div>
+  ${hasAr ? '' : '<div class="modes"><span class="lbl" style="color:var(--mute)">هالقسم بدون ترجمة</span><button type="button" class="rst" id="rst">↺ من جديد</button></div>'}</div>
+  <div class="qtop"><div class="bar"><i id="pb" style="width:0"></i></div><div class="pts" id="pt">⭐ 0</div></div><div id="stage"></div><div id="end"></div>`;
+        const pb = document.getElementById('pb'), pt = document.getElementById('pt'), stage = document.getElementById('stage'), end = document.getElementById('end');
+        const cardHtml = i => {
+          const c = deck.cards[i], cAr = hasAr && c.ar && String(c.ar).trim();
+          /* Foto nach Inhalt der Frage; sonst nach Thema der Geschichte; sonst keins */
+          const pu = photoFor(c.de + ' ' + (c.ar || ''), i) || photoFor(deck.title + ' ' + (deck.sum.de || '') + ' ' + (deck.sum.ar || ''), i);
+          const qph = pu ? `<div class="qph"><img loading="lazy" alt="" src="${pu}" onerror="this.parentNode.remove()"></div>` : '';
+          return `<div class="stamp qcard" data-i="${i}"><div class="in"><div class="qbody">${qph}<div class="qnum"><span>${i + 1}/${N}</span>${(hasAr && (cAr || c.opts.some(o => o.ar))) ? '<button type="button" class="trbtn" aria-label="ترجمة">🌐</button>' : ''}</div><div class="qtext de">${esc(c.de)}${cAr ? `<span class="ar">${esc(c.ar)}</span>` : ''}</div>
+  <div class="opts">${c.opts.map((o, j) => `<button class="opt" data-k="${esc(o.k)}"><b>${letters[j] || j + 1}</b><span class="de">${esc(o.de)}${hasAr && o.ar ? `<span class="ar">${esc(o.ar)}</span>` : ''}</span></button>`).join('')}</div><div class="fb"></div></div></div></div>`
+        };
+        function paint(card) {
+          const i = +card.dataset.i, c = deck.cards[i], a = S.ans[i];
+          const opts = [...card.querySelectorAll('.opt')], fb = card.querySelector('.fb');
+          opts.forEach(b => b.classList.remove('ok', 'no', 'sel'));
+          if (a === undefined) { opts.forEach(b => b.disabled = false); fb.classList.remove('show'); return }
+          if (!revealed()) { opts.forEach(b => { b.disabled = false; if (b.dataset.k === a) b.classList.add('sel') }); fb.innerHTML = '<span style="color:var(--mute)">✓ تم تسجيل جوابك — تقدر تغيّره قبل الإنهاء</span>'; fb.classList.add('show'); return }
+          opts.forEach(b => { b.disabled = true; if (b.dataset.k === c.c) b.classList.add('ok'); else if (b.dataset.k === a) b.classList.add('no') });
+          const good = a === c.c;
+          fb.innerHTML = `<span class="${good ? 'g' : 'r'}">${good ? '✓ ممتاز! +' + PTS : '✗ الجواب الصحيح مظلّل بالأخضر'}</span>`; fb.classList.add('show');
+        }
+        function top() {
+          const s = stats(); pb.style.width = (answeredN() / N * 100) + '%'; pt.textContent = revealed() ? '⭐ ' + s.pts : '📝 ' + answeredN() + '/' + N;
+          document.querySelectorAll('.chip').forEach(ch => { const i = +ch.dataset.i, a = S.ans[i]; ch.className = 'chip' + (i === S.cur ? ' cur' : '') + (a === undefined ? '' : (!revealed() ? ' sel' : (a === deck.cards[i].c ? ' ok' : ' no'))) })
+        }
+        function finish() {
+          if (S.exam && !S.done) {
+            end.innerHTML = answeredN() === N ? `<div style="text-align:center;margin-top:24px"><button class="btn" type="button" id="fin">إنهاء الامتحان وعرض النتيجة ✓</button></div>` : '';
+            const f = document.getElementById('fin'); if (f) f.onclick = () => { S.done = true; save(); render(); end.scrollIntoView({ behavior: 'smooth', block: 'center' }) };
+            return;
+          }
+          if (answeredN() < N) { end.innerHTML = ''; return }
+          const s = stats(), pc = Math.round(s.ok / N * 100), pass = pc >= 60;
+          if (pass) markDone(fileKey, doneId);
+          end.innerHTML = `<div class="stamp qcard" style="margin-top:26px"><div class="in" style="text-align:center;padding:30px 20px"><div style="font-size:3rem">${pc === 100 ? '🏆' : pass ? '🎉' : '💪'}</div><div style="font:800 4.5rem 'Bricolage Grotesque';color:var(--acc);line-height:1">${pc}%</div><h2>${pass ? 'ناجح — Bestanden!' : 'حاول مرة ثانية'}</h2><p style="color:var(--mute)">✓ ${s.ok} صح · ✗ ${s.bad} خطأ · ⭐ ${s.pts} نقطة</p><div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:20px">${nextUrl ? `<a class="btn" href="${nextUrl}">القصة التالية ←</a>` : ''}<button class="btn ghost" type="button" id="rst2">إعادة</button><a class="btn ghost" href="${backUrl}">القائمة</a></div></div></div>`;
+          document.getElementById('rst2').onclick = restart;
+        }
+        function restart() { dead = true; try { localStorage.removeItem(KEY) } catch (e) { } location.reload() }
+        function onAnswer(card, btn) {
+          const i = +card.dataset.i;
+          if (revealed() && S.ans[i] !== undefined) return;
+          if (S.exam && S.done) return;
+          S.ans[i] = btn.dataset.k; save(); paint(card); top();
+          const full = answeredN() === N;
+          finish();
+          if (full && !S.exam) end.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        /* الأسئلة تُبنى مرة وحدة؛ تغيير العرض بس يبدّل الشكل بدون إعادة بناء أو تحميل صور */
+        let ql, chipsEl, navEl, pvB, nvB, cardEls = [];
+        function build() {
+          stage.innerHTML = `<div class="chips" id="chips">${deck.cards.map((_, i) => `<button type="button" class="chip" data-i="${i}">${i + 1}</button>`).join('')}</div><div class="qlist" id="ql">${deck.cards.map((_, i) => cardHtml(i)).join('')}</div><div class="stepnav" id="sn"><button type="button" class="btn ghost" id="pv">→ السابق</button><button type="button" class="btn ghost" id="nv">التالي ←</button></div>`;
+          ql = document.getElementById('ql'); chipsEl = document.getElementById('chips'); navEl = document.getElementById('sn'); pvB = document.getElementById('pv'); nvB = document.getElementById('nv');
+          cardEls = [...ql.querySelectorAll('.qcard')];
+          chipsEl.querySelectorAll('.chip').forEach(ch => ch.onclick = () => { S.cur = +ch.dataset.i; save(); layout() });
+          pvB.onclick = () => { S.cur--; save(); layout() };
+          nvB.onclick = () => { S.cur++; save(); layout() };
+          cardEls.forEach(card => {
+            card.querySelectorAll('.opt').forEach(b => b.onclick = () => onAnswer(card, b));
+            const tb = card.querySelector('.trbtn'); if (tb) tb.onclick = () => card.classList.toggle('showar');
+          });
+        }
+        function layout() {
+          const m = S.mode, step = m === 'step'; app.style.maxWidth = m === 'grid' ? '1000px' : '';
+          document.querySelectorAll('#modes [data-m]').forEach(b => b.classList.toggle('on', b.dataset.m === m));
+          document.querySelectorAll('#styles [data-x]').forEach(b => b.classList.toggle('on', (b.dataset.x === '1') === S.exam));
+          document.querySelectorAll('#trm [data-t]').forEach(b => b.classList.toggle('on', b.dataset.t === trMode));
+          if (S.cur < 0 || S.cur >= N) S.cur = 0;
+          ql.classList.toggle('g2', m === 'grid');
+          chipsEl.style.display = navEl.style.display = step ? '' : 'none';
+          cardEls.forEach((c, i) => { c.style.display = step && i !== S.cur ? 'none' : '' });
+          pvB.disabled = S.cur === 0; nvB.disabled = S.cur === N - 1;
+          top();
+        }
+        function render() { cardEls.forEach(paint); layout(); finish() }
+        document.querySelectorAll('#modes [data-m]').forEach(b => b.onclick = () => {
+          S.mode = b.dataset.m; localStorage.setItem('qmode', S.mode);
+          if (S.mode === 'step') { const f = deck.cards.findIndex((_, i) => S.ans[i] === undefined); S.cur = f < 0 ? 0 : f }
+          save(); layout();
+        });
+        document.querySelectorAll('#styles [data-x]').forEach(b => b.onclick = () => {
+          const ex = b.dataset.x === '1'; if (ex === S.exam) return;
+          if (answeredN() && !confirm('تغيير الأسلوب بيبدأ القصة من الأول. متابعة؟')) return;
+          localStorage.setItem('qexam', ex ? '1' : '0'); restart();
+        });
+        document.querySelectorAll('#trm [data-t]').forEach(b => b.onclick = () => setTr(b.dataset.t));
+        function setTr(t) {
+          trMode = t; localStorage.setItem('trMode', t);
+          document.body.classList.toggle('noar', !hasAr || t === 'off'); document.body.classList.toggle('tapar', hasAr && t === 'tap');
+          document.querySelectorAll('#trm [data-t]').forEach(b => b.classList.toggle('on', b.dataset.t === t))
+        }
+        window._cycleTr = () => setTr({ show: 'tap', tap: 'off', off: 'show' }[trMode] || 'show');
+        document.getElementById('rst').onclick = () => { if (!answeredN() || confirm('تبدأ هالقصة من الأول؟')) restart() };
+        build(); render();
+        if (resumed && S.mode !== 'step' && S.sy > 0) setTimeout(() => window.scrollTo(0, S.sy), 60);
+        let tk = 0; window.addEventListener('scroll', () => { if (tk) return; tk = setTimeout(() => { tk = 0; S.sy = window.scrollY; save() }, 250) }, { passive: true });
+        if (resumed && answeredN() > 0 && !S.done && answeredN() < N) toast('كمّلنا من وين وقفت ✓');
+      }
+
+      /* ---------- Router ---------- */
+      loadQuestionsFile().then(data => {
+        if (!Array.isArray(data) || !data.length) { fail('تعذّر تحميل الأسئلة. تأكد من الاتصال بالإنترنت وحاول مرة ثانية.'); return }
+        const back = 'index.html', k = parseInt(sIdx, 10);
+        if (!isNaN(k) && data[k]) { play(() => storyDeck(data[k]), k, back, data[k + 1] ? back + '?index=' + (k + 1) : null); return }
+        const dn = JSON.parse(localStorage.getItem('done_' + fileKey) || '[]');
+        list('Lesen · Teil 1', 'اختر قصة وابدأ — مجاناً بدون تسجيل', data.map((s, i) => ({ t: s.title || 'Übung ' + (i + 1), n: (s.questions || []).length, d: dn.includes(String(i)) })), i => back + '?index=' + i);
+      }).catch(() => fail('حدث خطأ أثناء التحميل.'));
+    })();
+  </script>
+</body>
+
+</html>
